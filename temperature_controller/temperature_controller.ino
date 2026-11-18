@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #define LCD_ADDR 0x27
+const uint8_t LCD_COLS = 16;  // number of characters per LCD line
 const int sensorPin = A0;
 const int MOSFET_PIN = 9;  // now controls TIP31C on D9
 // Buttons (one leg to the pin, the other to GND)
@@ -8,7 +9,7 @@ const int BTN_UP = 2;    // increases the value
 const int BTN_DOWN = 3;  // decreases the value
 const int BTN_OK = 4;    // OK / Next / Start
 const int BTN_BACK = 5;  // Back / Stop / Abort
-LiquidCrystal_I2C lcd(LCD_ADDR, 16, 2);
+LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, 2);
 volatile bool tick1s = false;
 int secunde = 0, minute = 0, ore = 18;
 // temperature control
@@ -227,6 +228,14 @@ void handleButtons() {
     }
   }
 }
+// Fills the rest of the current LCD line with spaces,
+// so no characters from a previous, longer text stay visible
+void padLine(size_t printed) {
+  while (printed < LCD_COLS) {
+    lcd.print(' ');
+    printed++;
+  }
+}
 //run mode display
 void showRunScreen(float tC) {
   // Line 1: current T + T_set
@@ -240,26 +249,28 @@ void showRunScreen(float tC) {
   lcd.print(" ");
   // Line 2: phase + time in phase / summary
   lcd.setCursor(0, 1);
+  size_t printed = 0;  // characters written on line 2
   switch (curPhase) {
     case PHASE_HEAT:
-      lcd.print("HEAT t=");
-      lcd.print(phaseSec);
-      lcd.print("s ");
+      printed += lcd.print("HEAT t=");
+      printed += lcd.print(phaseSec);
+      printed += lcd.print("s");
       break;
     case PHASE_COOL:
-      lcd.print("COOL t=");
-      lcd.print(phaseSec);
-      lcd.print("s ");
+      printed += lcd.print("COOL t=");
+      printed += lcd.print(phaseSec);
+      printed += lcd.print("s");
       break;
     case PHASE_DONE:
-      lcd.print("DONE Th=");
-      lcd.print(heatTime);
-      lcd.print("s");
+      printed += lcd.print("DONE Th=");
+      printed += lcd.print(heatTime);
+      printed += lcd.print("s");
       break;
     default:
-      lcd.print("IDLE ");
+      printed += lcd.print("IDLE");
       break;
   }
+  padLine(printed);
 }
 //setup
 void setup() {
