@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "author": "Nehir",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-lcd1602", "id": "lcd1", "top": -180, "left": 20, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-potentiometer", "id": "pot1", "top": 260, "left": 330, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnUp",
+      "top": 260,
+      "left": -20,
+      "attrs": { "color": "green", "label": "UP", "key": "ArrowUp" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnDown",
+      "top": 330,
+      "left": -20,
+      "attrs": { "color": "blue", "label": "DOWN", "key": "ArrowDown" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnOk",
+      "top": 260,
+      "left": 110,
+      "attrs": { "color": "yellow", "label": "OK", "key": "Enter" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnBack",
+      "top": 330,
+      "left": 110,
+      "attrs": { "color": "red", "label": "BACK", "key": "Escape" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 120,
+      "left": 360,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": 40,
+      "left": 400,
+      "attrs": { "color": "orange", "label": "HEATER" }
+    }
+  ],
+  "connections": [
+    [ "lcd1:GND", "uno:GND.1", "black", [] ],
+    [ "lcd1:VCC", "uno:5V", "red", [] ],
+    [ "lcd1:SDA", "uno:A4", "green", [] ],
+    [ "lcd1:SCL", "uno:A5", "blue", [] ],
+    [ "pot1:VCC", "uno:5V", "red", [] ],
+    [ "pot1:GND", "uno:GND.2", "black", [] ],
+    [ "pot1:SIG", "uno:A0", "orange", [] ],
+    [ "btnUp:1.l", "uno:2", "green", [] ],
+    [ "btnUp:2.l", "uno:GND.2", "black", [] ],
+    [ "btnDown:1.l", "uno:3", "blue", [] ],
+    [ "btnDown:2.l", "uno:GND.2", "black", [] ],
+    [ "btnOk:1.l", "uno:4", "gold", [] ],
+    [ "btnOk:2.l", "uno:GND.2", "black", [] ],
+    [ "btnBack:1.l", "uno:5", "red", [] ],
+    [ "btnBack:2.l", "uno:GND.2", "black", [] ],
+    [ "uno:9", "r1:1", "orange", [] ],
+    [ "r1:2", "led1:A", "orange", [] ],
+    [ "led1:C", "uno:GND.3", "black", [] ]
+  ],
+  "dependencies": {}
+}
