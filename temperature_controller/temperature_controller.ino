@@ -73,7 +73,7 @@ bool buttonPressed(int pin, const char* name) {
       delay(10);
     }
     delay(20);  // short debounce
-    Serial.print("Buton: ");
+    Serial.print("Button: ");
     Serial.println(name);
     return true;
   }
@@ -102,7 +102,7 @@ void showMenu() {
       break;
     case 2:
       lcd.setCursor(0, 0);
-      lcd.print("START ciclul?");
+      lcd.print("Start cycle?");
       lcd.setCursor(0, 1);
       lcd.print("OK=Start BACK=<<");
       break;
@@ -157,7 +157,7 @@ void handleButtons() {
         menuItem++;
         showMenu();
       } else {
-        // We are on "START ciclul?" -> check Tset against Tcur
+        // We are on "Start cycle?" -> check Tset against Tcur
         float tC = readTemperatureC();
         if (setpoint <= tC + 0.5) {
           lcd.clear();
@@ -179,7 +179,7 @@ void handleButtons() {
           digitalWrite(HEATER_PIN, HIGH);  // TIP31C conducts -> bulb on
           lcd.clear();
           lcd.setCursor(0, 0);
-          lcd.print("Ciclu pornit...");
+          lcd.print("Cycle started...");
           delay(800);
         }
       }
@@ -251,7 +251,7 @@ void setup() {
   lcd.backlight();
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Pornire...");
+  lcd.print("Starting...");
   pinMode(HEATER_PIN, OUTPUT);
   digitalWrite(HEATER_PIN, LOW);  // bulb off at startup
   pinMode(BTN_UP, INPUT_PULLUP);
