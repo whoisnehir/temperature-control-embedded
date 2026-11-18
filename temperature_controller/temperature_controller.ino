@@ -113,7 +113,7 @@ void showMenu() {
       lcd.print((char)223);
       lcd.print("C");
       lcd.setCursor(0, 1);
-      lcd.print("UP/DN +/- OK>Next");
+      lcd.print("UP/DN +/- OK>Nxt");
       break;
     case 1:
       lcd.setCursor(0, 0);
@@ -121,7 +121,7 @@ void showMenu() {
       lcd.print(tCool);
       lcd.print("s");
       lcd.setCursor(0, 1);
-      lcd.print("UP/DN +/- OK>Next");
+      lcd.print("UP/DN +/- OK>Nxt");
       break;
     case 2:
       lcd.setCursor(0, 0);
