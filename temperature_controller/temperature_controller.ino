@@ -11,14 +11,11 @@ const int BTN_OK = 4;    // OK / Next / Start
 const int BTN_BACK = 5;  // Back / Stop / Abort
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, 2);
 volatile bool tick1s = false;
-int secunde = 0, minute = 0, ore = 18;
 // temperature control
 float setpoint = 25.0;  // T_set, changed from the menu
-bool heatOn = false;    // bulb state (heating)
 // times (in seconds)
 int tCool = 60;    // cooling time, SETTABLE from the menu
 int heatTime = 0;  // how many seconds it took to reach Tset
-int coolTime = 0;  // how long the cooling took (in practice = tCool, but kept separately)
 // overall system state
 enum Mode { MODE_MENU,
             MODE_RUN };
@@ -46,16 +43,6 @@ void setupTimer1_1Hz() {
 }
 ISR(TIMER1_COMPA_vect) {
   tick1s = true;
-  secunde++;
-  if (secunde >= 60) {
-    secunde = 0;
-    minute++;
-  }
-  if (minute >= 60) {
-    minute = 0;
-    ore++;
-  }
-  if (ore >= 24) { ore = 0; }
 }
 // TEMPERATURE READING
 float readTemperatureC() {
@@ -78,17 +65,6 @@ float readTemperatureC() {
   Serial.print(tempC, 2);
   Serial.println(" C");
   return tempC;
-}
-//Clock display
-void printClock(int h, int m, int s) {
-  if (h < 10) lcd.print('0');
-  lcd.print(h);
-  lcd.print(':');
-  if (m < 10) lcd.print('0');
-  lcd.print(m);
-  lcd.print(':');
-  if (s < 10) lcd.print('0');
-  lcd.print(s);
 }
 // BUTTONS
 bool buttonPressed(int pin, const char* name) {
@@ -200,8 +176,6 @@ void handleButtons() {
           curPhase = PHASE_HEAT;
           phaseSec = 0;
           heatTime = 0;
-          coolTime = 0;
-          heatOn = true;                   // heat at the beginning
           digitalWrite(MOSFET_PIN, HIGH);  // TIP31C conducts -> bulb on
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -222,7 +196,6 @@ void handleButtons() {
       curMode = MODE_MENU;
       curPhase = PHASE_IDLE;
       phaseSec = 0;
-      heatOn = false;
       digitalWrite(MOSFET_PIN, LOW);
       showMenu();
     }
@@ -303,33 +276,27 @@ void loop() {
       switch (curPhase) {
         case PHASE_HEAT:
           // in HEAT: the bulb is ON until we reach Tset
-          heatOn = true;
           digitalWrite(MOSFET_PIN, HIGH);
           if (tC >= setpoint) {
             // reached the desired temperature
             heatTime = phaseSec;    // store how long it took
             curPhase = PHASE_COOL;  // switch to cooling
             phaseSec = 0;
-            heatOn = false;
             digitalWrite(MOSFET_PIN, LOW);  // turn the bulb off IMMEDIATELY
           }
           break;
         case PHASE_COOL:
           // in COOL: the bulb is off, we only time the cooling
-          heatOn = false;
           digitalWrite(MOSFET_PIN, LOW);
           if (phaseSec >= tCool) {
-            coolTime = phaseSec;
             curPhase = PHASE_DONE;
           }
           break;
         case PHASE_DONE:
           // cycle finished, bulb off; press BACK to return to the menu
-          heatOn = false;
           digitalWrite(MOSFET_PIN, LOW);
           break;
         default:
-          heatOn = false;
           digitalWrite(MOSFET_PIN, LOW);
           break;
       }
@@ -337,7 +304,6 @@ void loop() {
       showRunScreen(tC);
     } else {
       // in menu, the bulb stays off (safety)
-      heatOn = false;
       digitalWrite(MOSFET_PIN, LOW);
     }
   }
