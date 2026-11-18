@@ -2,8 +2,8 @@
 #include <LiquidCrystal_I2C.h>
 #define LCD_ADDR 0x27
 const uint8_t LCD_COLS = 16;  // number of characters per LCD line
-const int sensorPin = A0;
-const int MOSFET_PIN = 9;  // now controls TIP31C on D9
+const int TEMP_SENSOR_PIN = A0;
+const int HEATER_PIN = 9;  // drives the TIP31C transistor that switches the bulb
 // Buttons (one leg to the pin, the other to GND)
 const int BTN_UP = 2;    // increases the value
 const int BTN_DOWN = 3;  // decreases the value
@@ -46,14 +46,14 @@ ISR(TIMER1_COMPA_vect) {
 }
 // TEMPERATURE READING
 float readTemperatureC() {
-  (void)analogRead(sensorPin);  // first reading discarded
-  long suma = 0;
+  (void)analogRead(TEMP_SENSOR_PIN);  // first reading discarded
+  long sum = 0;
   const int N = 32;
   for (int i = 0; i < N; i++) {
-    suma += analogRead(sensorPin);
+    sum += analogRead(TEMP_SENSOR_PIN);
     delayMicroseconds(200);
   }
-  float raw = suma / (float)N;
+  float raw = sum / (float)N;
   float voltage = raw * (5.0 / 1023.0);
   float tempC = voltage * 100.0;  // LM35: 10 mV/C
   // debug output on Serial
@@ -176,7 +176,7 @@ void handleButtons() {
           curPhase = PHASE_HEAT;
           phaseSec = 0;
           heatTime = 0;
-          digitalWrite(MOSFET_PIN, HIGH);  // TIP31C conducts -> bulb on
+          digitalWrite(HEATER_PIN, HIGH);  // TIP31C conducts -> bulb on
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("Ciclu pornit...");
@@ -196,7 +196,7 @@ void handleButtons() {
       curMode = MODE_MENU;
       curPhase = PHASE_IDLE;
       phaseSec = 0;
-      digitalWrite(MOSFET_PIN, LOW);
+      digitalWrite(HEATER_PIN, LOW);
       showMenu();
     }
   }
@@ -252,8 +252,8 @@ void setup() {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Pornire...");
-  pinMode(MOSFET_PIN, OUTPUT);
-  digitalWrite(MOSFET_PIN, LOW);  // bulb off at startup
+  pinMode(HEATER_PIN, OUTPUT);
+  digitalWrite(HEATER_PIN, LOW);  // bulb off at startup
   pinMode(BTN_UP, INPUT_PULLUP);
   pinMode(BTN_DOWN, INPUT_PULLUP);
   pinMode(BTN_OK, INPUT_PULLUP);
@@ -276,35 +276,35 @@ void loop() {
       switch (curPhase) {
         case PHASE_HEAT:
           // in HEAT: the bulb is ON until we reach Tset
-          digitalWrite(MOSFET_PIN, HIGH);
+          digitalWrite(HEATER_PIN, HIGH);
           if (tC >= setpoint) {
             // reached the desired temperature
             heatTime = phaseSec;    // store how long it took
             curPhase = PHASE_COOL;  // switch to cooling
             phaseSec = 0;
-            digitalWrite(MOSFET_PIN, LOW);  // turn the bulb off IMMEDIATELY
+            digitalWrite(HEATER_PIN, LOW);  // turn the bulb off IMMEDIATELY
           }
           break;
         case PHASE_COOL:
           // in COOL: the bulb is off, we only time the cooling
-          digitalWrite(MOSFET_PIN, LOW);
+          digitalWrite(HEATER_PIN, LOW);
           if (phaseSec >= tCool) {
             curPhase = PHASE_DONE;
           }
           break;
         case PHASE_DONE:
           // cycle finished, bulb off; press BACK to return to the menu
-          digitalWrite(MOSFET_PIN, LOW);
+          digitalWrite(HEATER_PIN, LOW);
           break;
         default:
-          digitalWrite(MOSFET_PIN, LOW);
+          digitalWrite(HEATER_PIN, LOW);
           break;
       }
       // run display
       showRunScreen(tC);
     } else {
       // in menu, the bulb stays off (safety)
-      digitalWrite(MOSFET_PIN, LOW);
+      digitalWrite(HEATER_PIN, LOW);
     }
   }
 }
