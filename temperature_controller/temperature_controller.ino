@@ -2,23 +2,23 @@
 #include <LiquidCrystal_I2C.h>
 #define LCD_ADDR 0x27
 const int sensorPin = A0;
-const int MOSFET_PIN = 9;  // acum controleaza TIP31C pe D9
-// Butoane (un picior la pin, celalalt la GND)
-const int BTN_UP = 2;    // creste valoarea
-const int BTN_DOWN = 3;  // scade valoarea
+const int MOSFET_PIN = 9;  // now controls TIP31C on D9
+// Buttons (one leg to the pin, the other to GND)
+const int BTN_UP = 2;    // increases the value
+const int BTN_DOWN = 3;  // decreases the value
 const int BTN_OK = 4;    // OK / Next / Start
-const int BTN_BACK = 5;  // inapoi / Stop / Abort
+const int BTN_BACK = 5;  // Back / Stop / Abort
 LiquidCrystal_I2C lcd(LCD_ADDR, 16, 2);
 volatile bool tick1s = false;
 int secunde = 0, minute = 0, ore = 18;
-// control temperatura
-float setpoint = 25.0;  // T_set, se schimba din meniu
-bool heatOn = false;    // stare bec (incalzire)
-// timpi (in secunde)
-int tCool = 60;    // timp de racire SETABIL din meniu
-int heatTime = 0;  // in cate secunde am ajuns la Tset
-int coolTime = 0;  // cat a durat racirea (in practica = tCool, dar il pastram separat)
-// stare generala sistem
+// temperature control
+float setpoint = 25.0;  // T_set, changed from the menu
+bool heatOn = false;    // bulb state (heating)
+// times (in seconds)
+int tCool = 60;    // cooling time, SETTABLE from the menu
+int heatTime = 0;  // how many seconds it took to reach Tset
+int coolTime = 0;  // how long the cooling took (in practice = tCool, but kept separately)
+// overall system state
 enum Mode { MODE_MENU,
             MODE_RUN };
 enum Phase { PHASE_IDLE,
@@ -27,17 +27,17 @@ enum Phase { PHASE_IDLE,
              PHASE_DONE };
 Mode curMode = MODE_MENU;
 Phase curPhase = PHASE_IDLE;
-// timp petrecut in faza curenta (secunde)
+// time spent in the current phase (seconds)
 int phaseSec = 0;
-// meniu: 0 = T_set, 1 = tCool, 2 = START
+// menu: 0 = T_set, 1 = tCool, 2 = START
 int menuItem = 0;
 const int MENU_LAST = 2;  // 0..2
-// TIMERE
+// TIMERS
 void setupTimer1_1Hz() {
   noInterrupts();
   TCCR1A = 0;
   TCCR1B = 0;
-  OCR1A = 15624;  // 1 s la prescaler 1024
+  OCR1A = 15624;  // 1 s with prescaler 1024
   TCCR1B |= (1 << WGM12);
   TCCR1B |= (1 << CS12) | (1 << CS10);
   TIMSK1 |= (1 << OCIE1A);
@@ -56,9 +56,9 @@ ISR(TIMER1_COMPA_vect) {
   }
   if (ore >= 24) { ore = 0; }
 }
-// CITIRE TEMPERATURA
+// TEMPERATURE READING
 float readTemperatureC() {
-  (void)analogRead(sensorPin);  // prima citire aruncata
+  (void)analogRead(sensorPin);  // first reading discarded
   long suma = 0;
   const int N = 32;
   for (int i = 0; i < N; i++) {
@@ -68,7 +68,7 @@ float readTemperatureC() {
   float raw = suma / (float)N;
   float voltage = raw * (5.0 / 1023.0);
   float tempC = voltage * 100.0;  // LM35: 10 mV/C
-  // debug pe Serial
+  // debug output on Serial
   Serial.print("raw=");
   Serial.print(raw);
   Serial.print(" V=");
@@ -78,7 +78,7 @@ float readTemperatureC() {
   Serial.println(" C");
   return tempC;
 }
-//Afisare ceas
+//Clock display
 void printClock(int h, int m, int s) {
   if (h < 10) lcd.print('0');
   lcd.print(h);
@@ -89,20 +89,20 @@ void printClock(int h, int m, int s) {
   if (s < 10) lcd.print('0');
   lcd.print(s);
 }
-// BUTOANE
+// BUTTONS
 bool buttonPressed(int pin, const char* name) {
-  if (digitalRead(pin) == LOW) {  // INPUT_PULLUP => LOW = apasat
+  if (digitalRead(pin) == LOW) {  // INPUT_PULLUP => LOW = pressed
     while (digitalRead(pin) == LOW) {
       delay(10);
     }
-    delay(20);  // mic debounce
+    delay(20);  // short debounce
     Serial.print("Buton: ");
     Serial.println(name);
     return true;
   }
   return false;
 }
-// update meniu pe LCD
+// update the menu on the LCD
 void showMenu() {
   lcd.clear();
   switch (menuItem) {
@@ -131,9 +131,9 @@ void showMenu() {
       break;
   }
 }
-// logica butoane
+// button logic
 void handleButtons() {
-  // Buton UP
+  // UP button
   if (buttonPressed(BTN_UP, "UP")) {
     if (curMode == MODE_MENU) {
       switch (menuItem) {
@@ -148,12 +148,12 @@ void handleButtons() {
           showMenu();
           break;
         case 2:
-          // nimic
+          // nothing
           break;
       }
     }
   }
-  // Buton DOWN
+  // DOWN button
   if (buttonPressed(BTN_DOWN, "DOWN")) {
     if (curMode == MODE_MENU) {
       switch (menuItem) {
@@ -168,19 +168,19 @@ void handleButtons() {
           showMenu();
           break;
         case 2:
-          // nimic
+          // nothing
           break;
       }
     }
   }
-  // Buton OK
+  // OK button
   if (buttonPressed(BTN_OK, "OK")) {
     if (curMode == MODE_MENU) {
       if (menuItem < MENU_LAST) {
         menuItem++;
         showMenu();
       } else {
-        // Suntem pe "START ciclul?" -> verificam Tset fata de Tcur
+        // We are on "START ciclul?" -> check Tset against Tcur
         float tC = readTemperatureC();
         if (setpoint <= tC + 0.5) {
           lcd.clear();
@@ -192,16 +192,16 @@ void handleButtons() {
           lcd.print((char)223);
           lcd.print("C");
           delay(2000);
-          showMenu();  // nu pornim ciclul
+          showMenu();  // do not start the cycle
         } else {
-          // PORNIM ciclul
+          // START the cycle
           curMode = MODE_RUN;
           curPhase = PHASE_HEAT;
           phaseSec = 0;
           heatTime = 0;
           coolTime = 0;
-          heatOn = true;                   // la inceput incalzim
-          digitalWrite(MOSFET_PIN, HIGH);  // TIP31C conduce -> bec aprins
+          heatOn = true;                   // heat at the beginning
+          digitalWrite(MOSFET_PIN, HIGH);  // TIP31C conducts -> bulb on
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("Ciclu pornit...");
@@ -210,14 +210,14 @@ void handleButtons() {
       }
     }
   }
-  // Buton BACK
+  // BACK button
   if (buttonPressed(BTN_BACK, "BACK")) {
     if (curMode == MODE_MENU) {
       if (menuItem > 0) menuItem--;
       else menuItem = MENU_LAST;
       showMenu();
     } else if (curMode == MODE_RUN) {
-      // abort ciclul si revenire la meniu
+      // abort the cycle and return to the menu
       curMode = MODE_MENU;
       curPhase = PHASE_IDLE;
       phaseSec = 0;
@@ -227,9 +227,9 @@ void handleButtons() {
     }
   }
 }
-//afisare in mod run
+//run mode display
 void showRunScreen(float tC) {
-  // Linia 1: T actuala + T_set
+  // Line 1: current T + T_set
   lcd.setCursor(0, 0);
   lcd.print("T:");
   lcd.print(tC, 1);
@@ -238,7 +238,7 @@ void showRunScreen(float tC) {
   lcd.print("S:");
   lcd.print(setpoint, 1);
   lcd.print(" ");
-  // Linia 2: faza + timpul in faza / rezumat
+  // Line 2: phase + time in phase / summary
   lcd.setCursor(0, 1);
   switch (curPhase) {
     case PHASE_HEAT:
@@ -269,7 +269,7 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("Pornire...");
   pinMode(MOSFET_PIN, OUTPUT);
-  digitalWrite(MOSFET_PIN, LOW);  // la start bec stins
+  digitalWrite(MOSFET_PIN, LOW);  // bulb off at startup
   pinMode(BTN_UP, INPUT_PULLUP);
   pinMode(BTN_DOWN, INPUT_PULLUP);
   pinMode(BTN_OK, INPUT_PULLUP);
@@ -281,30 +281,30 @@ void setup() {
   showMenu();
 }
 void loop() {
-  // citim butoanele tot timpul
+  // read the buttons all the time
   handleButtons();
-  // la fiecare 1s facem logica principala
+  // every 1 s run the main logic
   if (tick1s) {
     tick1s = false;
     float tC = readTemperatureC();
     if (curMode == MODE_RUN) {
-      phaseSec++;  // timp in faza curenta
+      phaseSec++;  // time in the current phase
       switch (curPhase) {
         case PHASE_HEAT:
-          // in HEAT: becul e APRINS pana ajungem la Tset
+          // in HEAT: the bulb is ON until we reach Tset
           heatOn = true;
           digitalWrite(MOSFET_PIN, HIGH);
           if (tC >= setpoint) {
-            // am ajuns la temperatura dorita
-            heatTime = phaseSec;    // memoram in cat timp
-            curPhase = PHASE_COOL;  // trecem in racire
+            // reached the desired temperature
+            heatTime = phaseSec;    // store how long it took
+            curPhase = PHASE_COOL;  // switch to cooling
             phaseSec = 0;
             heatOn = false;
-            digitalWrite(MOSFET_PIN, LOW);  // stingem becul IMEDIAT
+            digitalWrite(MOSFET_PIN, LOW);  // turn the bulb off IMMEDIATELY
           }
           break;
         case PHASE_COOL:
-          // in COOL: becul este stins, doar cronometram racirea
+          // in COOL: the bulb is off, we only time the cooling
           heatOn = false;
           digitalWrite(MOSFET_PIN, LOW);
           if (phaseSec >= tCool) {
@@ -313,7 +313,7 @@ void loop() {
           }
           break;
         case PHASE_DONE:
-          // ciclu terminat, bec stins; poti apasa BACK pentru meniu
+          // cycle finished, bulb off; press BACK to return to the menu
           heatOn = false;
           digitalWrite(MOSFET_PIN, LOW);
           break;
@@ -322,10 +322,10 @@ void loop() {
           digitalWrite(MOSFET_PIN, LOW);
           break;
       }
-      // afis run
+      // run display
       showRunScreen(tC);
     } else {
-      // in meniu, becul sta stins (siguranta)
+      // in menu, the bulb stays off (safety)
       heatOn = false;
       digitalWrite(MOSFET_PIN, LOW);
     }
